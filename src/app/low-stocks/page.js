@@ -3,14 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
 export default async function LowStockPage() {
-  const supabase = createSupabaseServer();
+  const supabase = await createSupabaseServer();
   const { data: products, error } = await supabase
     .from("products")
     .select("*, categories(name), units(name)")
     .order("quantity", { ascending: true });
-  // WHY filter here and not in Supabase query?
-  // Supabase can't compare two columns in a simple filter.
-  // We fetch all and filter in JS instead.
 
   if (error) return <p className="text-red-500">Error: {error.message}</p>;
 

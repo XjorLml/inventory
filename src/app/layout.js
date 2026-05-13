@@ -6,8 +6,13 @@ import BottomNav from "@/components/BottomNav";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Inventory App",
-  description: "Track your inventory",
+  manifest: "/manifest.json",
+  themeColor: "#0d1b2a",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Inventory",
+  },
 };
 
 export default function RootLayout({ children }) {

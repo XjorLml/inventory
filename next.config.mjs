@@ -1,4 +1,4 @@
-// next.config.js
+// next.config.mjs
 import withPWA from "@ducanh2912/next-pwa";
 
 const pwaConfig = withPWA({
@@ -8,9 +8,10 @@ const pwaConfig = withPWA({
   disable: process.env.NODE_ENV === "development",
 });
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactCompiler: true,
+  experimental: {
+    reactCompiler: true, // ← move here
+  },
 };
 
 export default pwaConfig(nextConfig);

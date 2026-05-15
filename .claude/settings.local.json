@@ -3,10 +3,16 @@
     "allow": [
       "Bash(New-Item -ItemType Directory -Force -Path \"d:/LEM/Web/inventory-app/public/icons\")",
       "Bash(mkdir -p \"d:/LEM/Web/inventory-app/public/icons\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npm test *)",
+      "Bash(npm install *)"
     ],
     "additionalDirectories": [
       "d:\\LEM\\Web\\inventory-app\\public"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "enableAllProjectMcpServers": true
 }

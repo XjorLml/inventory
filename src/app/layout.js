@@ -7,12 +7,17 @@ const geist = Geist({ subsets: ["latin"] });
 
 export const metadata = {
   manifest: "/manifest.json",
-  themeColor: "#0d1b2a",
+  title: "Inventory App",
+  description: "Manage your inventory",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Inventory",
   },
+};
+
+export const viewport = {
+  themeColor: "#0d1b2a",
 };
 
 export default function RootLayout({ children }) {

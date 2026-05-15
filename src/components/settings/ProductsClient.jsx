@@ -16,8 +16,27 @@ const emptyForm = {
   sku: "",
   category_id: "",
   unit_id: "",
-  quantity: 0,
-  low_stock_threshold: 10,
+  quantity: 1,
+  low_stock_threshold: 1,
+};
+const NUMERIC_FIELDS = new Set(["quantity", "low_stock_threshold"]);
+
+const REQUIRED_FIELDS = [
+  { key: "name", label: "Product name" },
+  { key: "sku", label: "SKU" },
+  { key: "category_id", label: "Category" },
+  { key: "unit_id", label: "Unit" },
+];
+
+const generateSKU = (name, categories, categoryId) => {
+  const category = categories.find((c) => c.id === categoryId);
+  const prefix = category
+    ? category.name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
+    : name
+      ? name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
+      : "ITEM";
+  const suffix = String(Math.floor(1000 + Math.random() * 9000));
+  return `${prefix}-${suffix}`;
 };
 
 export default function ProductsClient({ products, categories, units }) {
@@ -36,9 +55,26 @@ export default function ProductsClient({ products, categories, units }) {
   } = useDialogState();
 
   const handleChange = (e) => {
-    const value =
-      e.target.type === "number" ? Number(e.target.value) : e.target.value;
-    setForm((prev) => ({ ...prev, [e.target.name]: value }));
+    const { name, value } = e.target;
+    const coerced = NUMERIC_FIELDS.has(name)
+      ? value === ""
+        ? ""
+        : Number(value.replace(/\D/g, ""))
+      : value;
+
+    setForm((prev) => {
+      const updated = { ...prev, [name]: coerced };
+
+      if (!editing && (name === "name" || name === "category_id")) {
+        updated.sku = generateSKU(
+          name === "name" ? value : prev.name,
+          categories,
+          name === "category_id" ? value : prev.category_id,
+        );
+      }
+
+      return updated;
+    });
   };
 
   const handleEdit = (product) => {
@@ -47,6 +83,14 @@ export default function ProductsClient({ products, categories, units }) {
   };
 
   const handleSubmit = async () => {
+    const missing = REQUIRED_FIELDS.filter(
+      ({ key }) => !form[key]?.toString().trim(),
+    ).map(({ label }) => label);
+
+    if (missing.length > 0) {
+      toast.error(`Please fill in: ${missing.join(", ")}`);
+      return;
+    }
     const { error } = editing
       ? await supabase.from("products").update(form).eq("id", editing.id)
       : await supabase.from("products").insert(form);
@@ -175,12 +219,34 @@ export default function ProductsClient({ products, categories, units }) {
           value={form.name}
           onChange={handleChange}
         />
-        <Input
-          placeholder="SKU (e.g. RICE-001)"
-          name="sku"
-          value={form.sku}
-          onChange={handleChange}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-zinc-500">SKU</label>
+          <div className="flex gap-2">
+            <Input
+              name="sku"
+              value={form.sku}
+              onChange={handleChange}
+              placeholder="Auto-generated"
+              className="font-mono text-sm"
+            />
+            {!editing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 text-xs px-3"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    sku: generateSKU(prev.name, categories, prev.category_id),
+                  }))
+                }
+              >
+                🔄
+              </Button>
+            )}
+          </div>
+        </div>
         <select
           name="category_id"
           value={form.category_id}
@@ -212,7 +278,9 @@ export default function ProductsClient({ products, categories, units }) {
           <Input
             placeholder="Quantity"
             name="quantity"
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={form.quantity}
             onChange={handleChange}
           />
@@ -224,7 +292,9 @@ export default function ProductsClient({ products, categories, units }) {
           <Input
             placeholder="Low stock threshold"
             name="low_stock_threshold"
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={form.low_stock_threshold}
             onChange={handleChange}
           />

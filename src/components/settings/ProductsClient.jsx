@@ -66,7 +66,9 @@ export default function ProductsClient({ products, categories, units }) {
 
     if (!unit) return false;
 
-    return ["kg", "kilogram"].includes(unit.name.toLowerCase());
+    return ["kg", "kilogram", "g", "gram", "l", "liter"].includes(
+      unit.name.toLowerCase(),
+    );
   };
 
   const handleChange = (e) => {

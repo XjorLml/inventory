@@ -78,7 +78,15 @@ export default function ProductsClient({ products, categories, units }) {
   };
 
   const handleEdit = (product) => {
-    setForm({ ...product });
+    setForm({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      category_id: product.category_id,
+      unit_id: product.unit_id,
+      quantity: product.quantity,
+      low_stock_threshold: product.low_stock_threshold,
+    });
     openEdit(product);
   };
 

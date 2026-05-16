@@ -16,9 +16,10 @@ const emptyForm = {
   sku: "",
   category_id: "",
   unit_id: "",
-  quantity: 1,
-  low_stock_threshold: 1,
+  quantity: "1",
+  low_stock_threshold: "1",
 };
+
 const NUMERIC_FIELDS = new Set(["quantity", "low_stock_threshold"]);
 
 const REQUIRED_FIELDS = [
@@ -30,19 +31,24 @@ const REQUIRED_FIELDS = [
 
 const generateSKU = (name, categories, categoryId) => {
   const category = categories.find((c) => c.id === categoryId);
+
   const prefix = category
     ? category.name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
     : name
       ? name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
       : "ITEM";
+
   const suffix = String(Math.floor(1000 + Math.random() * 9000));
+
   return `${prefix}-${suffix}`;
 };
 
 export default function ProductsClient({ products, categories, units }) {
   const supabase = createSupabaseClient();
   const router = useRouter();
+
   const [form, setForm] = useState(emptyForm);
+
   const {
     formOpen,
     editing,
@@ -54,17 +60,47 @@ export default function ProductsClient({ products, categories, units }) {
     closeDelete,
   } = useDialogState();
 
+  // Allow decimal only for KG
+  const allowsDecimal = (unitId) => {
+    const unit = units.find((u) => u.id === unitId);
+
+    if (!unit) return false;
+
+    return ["kg", "kilogram"].includes(unit.name.toLowerCase());
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const coerced = NUMERIC_FIELDS.has(name)
-      ? value === ""
-        ? ""
-        : Number(value.replace(/\D/g, ""))
-      : value;
+
+    // Numeric validation
+    if (NUMERIC_FIELDS.has(name)) {
+      const decimalAllowed = allowsDecimal(form.unit_id);
+
+      // Allow empty while typing
+      if (value === "") {
+        setForm((prev) => ({
+          ...prev,
+          [name]: "",
+        }));
+        return;
+      }
+
+      // KG => decimal
+      // Others => whole numbers only
+      const regex = decimalAllowed ? /^\d*\.?\d*$/ : /^\d*$/;
+
+      if (!regex.test(value)) {
+        return;
+      }
+    }
 
     setForm((prev) => {
-      const updated = { ...prev, [name]: coerced };
+      const updated = {
+        ...prev,
+        [name]: value,
+      };
 
+      // Auto-generate SKU
       if (!editing && (name === "name" || name === "category_id")) {
         updated.sku = generateSKU(
           name === "name" ? value : prev.name,
@@ -84,9 +120,10 @@ export default function ProductsClient({ products, categories, units }) {
       sku: product.sku,
       category_id: product.category_id,
       unit_id: product.unit_id,
-      quantity: product.quantity,
-      low_stock_threshold: product.low_stock_threshold,
+      quantity: String(product.quantity),
+      low_stock_threshold: String(product.low_stock_threshold),
     });
+
     openEdit(product);
   };
 
@@ -99,14 +136,42 @@ export default function ProductsClient({ products, categories, units }) {
       toast.error(`Please fill in: ${missing.join(", ")}`);
       return;
     }
+
+    const payload = {
+      ...form,
+      quantity: parseFloat(form.quantity),
+      low_stock_threshold: parseFloat(form.low_stock_threshold),
+    };
+
+    // Validate numbers
+    if (isNaN(payload.quantity) || isNaN(payload.low_stock_threshold)) {
+      toast.error("Please enter valid numbers");
+      return;
+    }
+
+    // Prevent decimals for non-KG units
+    const decimalAllowed = allowsDecimal(form.unit_id);
+
+    if (
+      !decimalAllowed &&
+      (!Number.isInteger(payload.quantity) ||
+        !Number.isInteger(payload.low_stock_threshold))
+    ) {
+      toast.error("Only whole numbers are allowed for this unit");
+      return;
+    }
+
     const { error } = editing
-      ? await supabase.from("products").update(form).eq("id", editing.id)
-      : await supabase.from("products").insert(form);
+      ? await supabase.from("products").update(payload).eq("id", editing.id)
+      : await supabase.from("products").insert(payload);
 
     if (error) {
       toast.error("Operation failed");
       return;
     }
+
+    toast.success(editing ? "Product updated" : "Product added");
+
     closeForm();
     setForm(emptyForm);
     router.refresh();
@@ -114,37 +179,47 @@ export default function ProductsClient({ products, categories, units }) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+
     const { id, name } = deleteTarget;
+
     const { error } = await supabase.from("products").delete().eq("id", id);
+
     if (error) {
       toast.error(`Failed to delete "${name}"`);
       return;
     }
+
+    toast.success("Product deleted");
+
     closeDelete();
     router.refresh();
   };
 
   return (
     <div>
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Products</h2>
+
         <Badge variant="secondary">{products.length} items</Badge>
       </div>
 
-      {/* Empty state */}
+      {/* Empty State */}
       {products.length === 0 && (
         <div className="text-center py-24 text-zinc-400">
           <p className="text-5xl mb-3">🗂️</p>
+
           <p className="font-medium">No products yet</p>
+
           <p className="text-sm mt-1">Tap + to add your first product</p>
         </div>
       )}
 
-      {/* Product cards */}
+      {/* Product List */}
       <div className="flex flex-col gap-3">
         {products.map((product) => {
           const isLow = product.quantity <= product.low_stock_threshold;
+
           return (
             <div
               key={product.id}
@@ -156,8 +231,10 @@ export default function ProductsClient({ products, categories, units }) {
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <p className="font-semibold text-sm">{product.name}</p>
+
                   <p className="text-xs text-zinc-400">{product.sku}</p>
                 </div>
+
                 {isLow ? (
                   <Badge variant="destructive" className="text-xs">
                     Low Stock
@@ -171,11 +248,15 @@ export default function ProductsClient({ products, categories, units }) {
 
               <div className="flex items-center gap-2 text-xs text-zinc-500 mb-3">
                 <span>🏷️ {product.categories?.name ?? "—"}</span>
+
                 <span>·</span>
+
                 <span>
                   {product.quantity} {product.units?.name ?? ""}
                 </span>
+
                 <span>·</span>
+
                 <span>Min: {product.low_stock_threshold}</span>
               </div>
 
@@ -188,9 +269,10 @@ export default function ProductsClient({ products, categories, units }) {
                 >
                   ✏️ Edit
                 </Button>
+
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="outline"
                   className="flex-1 text-xs"
                   onClick={() => openDelete(product)}
                 >
@@ -214,6 +296,7 @@ export default function ProductsClient({ products, categories, units }) {
         +
       </button>
 
+      {/* Form Dialog */}
       <FormDialog
         open={formOpen}
         onOpenChange={closeForm}
@@ -227,8 +310,11 @@ export default function ProductsClient({ products, categories, units }) {
           value={form.name}
           onChange={handleChange}
         />
+
+        {/* SKU */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-zinc-500">SKU</label>
+
           <div className="flex gap-2">
             <Input
               name="sku"
@@ -237,6 +323,7 @@ export default function ProductsClient({ products, categories, units }) {
               placeholder="Auto-generated"
               className="font-mono text-sm"
             />
+
             {!editing && (
               <Button
                 type="button"
@@ -255,6 +342,8 @@ export default function ProductsClient({ products, categories, units }) {
             )}
           </div>
         </div>
+
+        {/* Category */}
         <select
           name="category_id"
           value={form.category_id}
@@ -262,12 +351,15 @@ export default function ProductsClient({ products, categories, units }) {
           className="border rounded-lg px-3 py-2 text-sm bg-white"
         >
           <option value="">Select category</option>
+
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
         </select>
+
+        {/* Unit */}
         <select
           name="unit_id"
           value={form.unit_id}
@@ -275,40 +367,46 @@ export default function ProductsClient({ products, categories, units }) {
           className="border rounded-lg px-3 py-2 text-sm bg-white"
         >
           <option value="">Select unit</option>
+
           {units.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name}
             </option>
           ))}
         </select>
+
+        {/* Quantity */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-zinc-500">Quantity</label>
+
           <Input
             placeholder="Quantity"
             name="quantity"
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
+            inputMode={allowsDecimal(form.unit_id) ? "decimal" : "numeric"}
             value={form.quantity}
             onChange={handleChange}
           />
         </div>
+
+        {/* Low Stock */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-zinc-500">
             Low Stock Threshold
           </label>
+
           <Input
             placeholder="Low stock threshold"
             name="low_stock_threshold"
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
+            inputMode={allowsDecimal(form.unit_id) ? "decimal" : "numeric"}
             value={form.low_stock_threshold}
             onChange={handleChange}
           />
         </div>
       </FormDialog>
 
+      {/* Delete Dialog */}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={closeDelete}

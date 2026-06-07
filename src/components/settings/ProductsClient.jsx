@@ -13,7 +13,6 @@ import { useDialogState } from "@/hooks/useDialogState";
 
 const emptyForm = {
   name: "",
-  sku: "",
   category_id: "",
   unit_id: "",
   quantity: "1",
@@ -24,24 +23,9 @@ const NUMERIC_FIELDS = new Set(["quantity", "low_stock_threshold"]);
 
 const REQUIRED_FIELDS = [
   { key: "name", label: "Product name" },
-  { key: "sku", label: "SKU" },
   { key: "category_id", label: "Category" },
   { key: "unit_id", label: "Unit" },
 ];
-
-const generateSKU = (name, categories, categoryId) => {
-  const category = categories.find((c) => c.id === categoryId);
-
-  const prefix = category
-    ? category.name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
-    : name
-      ? name.slice(0, 4).toUpperCase().replace(/\s+/g, "")
-      : "ITEM";
-
-  const suffix = String(Math.floor(1000 + Math.random() * 9000));
-
-  return `${prefix}-${suffix}`;
-};
 
 export default function ProductsClient({ products, categories, units }) {
   const supabase = createSupabaseClient();
@@ -96,30 +80,16 @@ export default function ProductsClient({ products, categories, units }) {
       }
     }
 
-    setForm((prev) => {
-      const updated = {
-        ...prev,
-        [name]: value,
-      };
-
-      // Auto-generate SKU
-      if (!editing && (name === "name" || name === "category_id")) {
-        updated.sku = generateSKU(
-          name === "name" ? value : prev.name,
-          categories,
-          name === "category_id" ? value : prev.category_id,
-        );
-      }
-
-      return updated;
-    });
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleEdit = (product) => {
     setForm({
       id: product.id,
       name: product.name,
-      sku: product.sku,
       category_id: product.category_id,
       unit_id: product.unit_id,
       quantity: String(product.quantity),
@@ -163,12 +133,25 @@ export default function ProductsClient({ products, categories, units }) {
       return;
     }
 
+    if (!editing) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+      payload.user_id = user.id;
+    }
+
     const { error } = editing
       ? await supabase.from("products").update(payload).eq("id", editing.id)
       : await supabase.from("products").insert(payload);
 
     if (error) {
-      toast.error("Operation failed");
+      if (error.message?.includes("unique constraint")) {
+        toast.error('A product with this name already exists');
+      } else {
+        toast.error("Operation failed");
+      }
       return;
     }
 
@@ -233,8 +216,6 @@ export default function ProductsClient({ products, categories, units }) {
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <p className="font-semibold text-sm">{product.name}</p>
-
-                  <p className="text-xs text-zinc-400">{product.sku}</p>
                 </div>
 
                 {isLow ? (
@@ -312,38 +293,6 @@ export default function ProductsClient({ products, categories, units }) {
           value={form.name}
           onChange={handleChange}
         />
-
-        {/* SKU */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-500">SKU</label>
-
-          <div className="flex gap-2">
-            <Input
-              name="sku"
-              value={form.sku}
-              onChange={handleChange}
-              placeholder="Auto-generated"
-              className="font-mono text-sm"
-            />
-
-            {!editing && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 text-xs px-3"
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    sku: generateSKU(prev.name, categories, prev.category_id),
-                  }))
-                }
-              >
-                🔄
-              </Button>
-            )}
-          </div>
-        </div>
 
         {/* Category */}
         <select

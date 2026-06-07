@@ -38,12 +38,22 @@ export default function CategoriesClient({ categories }) {
       return;
     }
 
+    const payload = { name: trimmed };
+    if (!editing) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+      payload.user_id = user.id;
+    }
+
     const { error } = editing
       ? await supabase
           .from("categories")
           .update({ name: trimmed })
           .eq("id", editing.id)
-      : await supabase.from("categories").insert({ name: trimmed });
+      : await supabase.from("categories").insert(payload);
 
     if (error) {
       toast.error("Operation failed");

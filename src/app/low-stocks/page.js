@@ -41,7 +41,6 @@ export default async function LowStockPage() {
             <div className="flex items-start justify-between mb-1">
               <div>
                 <p className="font-semibold text-sm">{product.name}</p>
-                <p className="text-xs text-zinc-400">{product.sku}</p>
               </div>
               <Badge variant="destructive" className="text-xs">
                 Low Stock

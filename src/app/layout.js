@@ -2,6 +2,7 @@ import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import UserButton from "@/components/UserButton";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -25,8 +26,11 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geist.className} bg-zinc-100`}>
         {/* Top header */}
-        <header className="bg-white border-b px-4 py-4 sticky top-0 z-40">
-          <h1 className="text-lg font-bold">📦 Inventory</h1>
+        <header className="bg-white border-b px-4 py-3 sticky top-0 z-40">
+          <div className="max-w-lg mx-auto flex items-center justify-between">
+            <h1 className="text-lg font-bold">📦 Inventory</h1>
+            <UserButton />
+          </div>
         </header>
 
         {/* Page content */}

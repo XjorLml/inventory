@@ -1,6 +1,8 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import SettingsClient from "@/components/settings/SettingsClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
   const supabase = await createSupabaseServer();
   const [{ data: products }, { data: categories }, { data: units }] =

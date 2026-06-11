@@ -86,19 +86,19 @@ describe('ShoppingListClient CRUD Operations', () => {
       expect(screen.getByText('Update')).toBeInTheDocument();
     });
 
-    it('resets qty state when restock button clicked', async () => {
+    it('switches restock target when different product clicked', async () => {
       const user = userEvent.setup();
       render(<ShoppingListClient products={sampleProducts} />);
 
+      // Open restock for first product
       await user.click(screen.getAllByText('Restock to how many?', { exact: false })[0]);
-      const input = screen.getByPlaceholderText('Add quantity');
+      await user.type(screen.getByPlaceholderText('Add quantity'), '10');
 
-      await user.type(input, '10');
-      expect(input).toHaveValue(10);
-
-      // Click cancel (by clicking Restock again)
+      // Click second product's restock button — first product's input disappears
       await user.click(screen.getAllByText('Restock to how many?', { exact: false })[0]);
-      expect(input).toHaveValue(null);
+
+      // The new input should have empty value
+      expect(screen.getByPlaceholderText('Add quantity')).toHaveValue(null);
     });
 
     it('restocks product successfully', async () => {

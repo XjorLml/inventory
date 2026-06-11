@@ -6,10 +6,18 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Search, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { FormDialog } from "@/components/ui/FormDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDialogState } from "@/hooks/useDialogState";
+
+const SORT_OPTIONS = [
+  { label: "Name A–Z", value: "name-asc" },
+  { label: "Name Z–A", value: "name-desc" },
+  { label: "Qty Low–High", value: "qty-asc" },
+  { label: "Qty High–Low", value: "qty-desc" },
+]
 
 const emptyForm = {
   name: "",
@@ -32,6 +40,8 @@ export default function ProductsClient({ products, categories, units }) {
   const router = useRouter();
 
   const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name-asc");
 
   const {
     formOpen,
@@ -162,6 +172,19 @@ export default function ProductsClient({ products, categories, units }) {
     router.refresh();
   };
 
+  // Search & sort
+  const query = search.toLowerCase()
+  const displayed = products
+    .filter((p) => !query || p.name.toLowerCase().includes(query))
+    .sort((a, b) => {
+      switch (sort) {
+        case "name-desc": return b.name.localeCompare(a.name)
+        case "qty-asc": return a.quantity - b.quantity
+        case "qty-desc": return b.quantity - a.quantity
+        default: return a.name.localeCompare(b.name)
+      }
+    })
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
@@ -183,26 +206,48 @@ export default function ProductsClient({ products, categories, units }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-xl font-bold">Products</h2>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="appearance-none text-xs border rounded-lg px-2 py-1.5 pr-6 bg-white text-zinc-600 cursor-pointer"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <ArrowUpDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400" />
+          </div>
+          <Badge variant="secondary">{products.length} items</Badge>
+        </div>
+      </div>
 
-        <Badge variant="secondary">{products.length} items</Badge>
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+        <Input
+          placeholder="Search products…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-8 text-sm"
+        />
       </div>
 
       {/* Empty State */}
-      {products.length === 0 && (
+      {displayed.length === 0 && (
         <div className="text-center py-24 text-zinc-400">
           <p className="text-5xl mb-3">🗂️</p>
-
-          <p className="font-medium">No products yet</p>
-
-          <p className="text-sm mt-1">Tap + to add your first product</p>
+          <p className="font-medium">{products.length === 0 ? "No products yet" : "No products match your search"}</p>
+          <p className="text-sm mt-1">{products.length === 0 ? "Tap + to add your first product" : "Try a different search term"}</p>
         </div>
       )}
 
       {/* Product List */}
       <div className="flex flex-col gap-3">
-        {products.map((product) => {
+        {displayed.map((product) => {
           const isLow = product.quantity <= product.low_stock_threshold;
 
           return (

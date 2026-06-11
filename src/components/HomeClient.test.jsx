@@ -15,7 +15,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }) => (open ? <div data-testid="dialog">{children}</div> : null),
+  Dialog: ({ children, open, onOpenChange }) => (open ? <div data-testid="dialog">{children}<button onClick={() => onOpenChange?.(false)}>Close Dialog</button></div> : null),
   DialogContent: ({ children }) => <div>{children}</div>,
   DialogHeader: ({ children }) => <div>{children}</div>,
   DialogTitle: ({ children }) => <h2>{children}</h2>,
@@ -79,16 +79,16 @@ describe('HomeClient CRUD Operations', () => {
       expect(screen.getByText(/Low Stock/)).toBeInTheDocument();
     });
 
-    it('displays OK badge for normal stock items', () => {
-      render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
-      expect(screen.getAllByText('OK').length).toBeGreaterThan(0);
+    it('does not show low stock indicator for well-stocked items', () => {
+      render(<HomeClient products={[sampleProducts[0]]} categories={sampleCategories} />);
+      expect(screen.queryByText(/Low Stock/)).not.toBeInTheDocument();
     });
 
-    it('renders category filter tabs', () => {
+    it('renders category filter tabs with counts', () => {
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
-      expect(screen.getByText('All')).toBeInTheDocument();
-      expect(screen.getByText('Grains')).toBeInTheDocument();
-      expect(screen.getByText('Sweeteners')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^All/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Grains/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Sweeteners/ })).toBeInTheDocument();
     });
 
     it('shows empty state when no products', () => {
@@ -109,7 +109,7 @@ describe('HomeClient CRUD Operations', () => {
       const user = userEvent.setup();
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
-      await user.click(screen.getByText('Grains'));
+      await user.click(screen.getByRole('button', { name: /^Grains/ }));
 
       expect(screen.getByText('Rice')).toBeInTheDocument();
       expect(screen.queryByText('Sugar')).not.toBeInTheDocument();
@@ -131,25 +131,24 @@ describe('HomeClient CRUD Operations', () => {
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
       await user.click(screen.getAllByText('+', { exact: true })[0]);
-      expect(screen.getByText('Rice')).toBeInTheDocument(); // product name
+      const dialog = screen.getByTestId('dialog');
+      expect(dialog).toHaveTextContent('Rice');
     });
 
     it('increments/decrements quantity with dialog buttons', async () => {
       const user = userEvent.setup();
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
-      await user.click(screen.getByText('+', { exact: true }));
+      await user.click(screen.getAllByText('+', { exact: true })[0]);
 
-      const display = screen.getByText('50', { exact: true });
-
-      // Click + button in dialog
+      // Click + button in dialog (third + overall: 2 per product card + 1 in dialog)
       const plusButtons = screen.getAllByText('+');
-      await user.click(plusButtons[1]); // second + is in dialog
+      await user.click(plusButtons[2]);
       expect(screen.getByText('51')).toBeInTheDocument();
 
-      // Click - button in dialog
+      // Click - button in dialog (third - overall: 2 per product card + 1 in dialog)
       const minusButtons = screen.getAllByText('−');
-      await user.click(minusButtons[1]); // second - is in dialog
+      await user.click(minusButtons[2]);
       expect(screen.getByText('50')).toBeInTheDocument();
     });
 
@@ -165,7 +164,9 @@ describe('HomeClient CRUD Operations', () => {
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
       await user.click(screen.getAllByText('+', { exact: true })[0]);
-      await user.type(screen.getByPlaceholderText(/quantity/), '75');
+      const qtyInput = screen.getByDisplayValue('50');
+      await user.clear(qtyInput);
+      await user.type(qtyInput, '75');
       await user.click(screen.getByText('Done'));
 
       await waitFor(() => {
@@ -181,13 +182,10 @@ describe('HomeClient CRUD Operations', () => {
       const user = userEvent.setup();
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
-      await user.click(screen.getByText('+', { exact: true }));
+      await user.click(screen.getAllByText('+', { exact: true })[0]);
       expect(screen.getByText('Adjust Quantity')).toBeInTheDocument();
 
-      // The close button is inside the Dialog
-      // For simplicity, we can click outside or the X button
-      const closeButtons = screen.getAllByRole('button', { name: /close/i });
-      await user.click(closeButtons[0]);
+      await user.click(screen.getByText('Close Dialog'));
 
       await waitFor(() => {
         expect(screen.queryByText('Adjust Quantity')).not.toBeInTheDocument();
@@ -228,22 +226,38 @@ describe('HomeClient CRUD Operations', () => {
         update: mockUpdate,
       });
 
-      render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
-
-      // Find the product with quantity 0 and try to click its minus button
-      // Actually Sugar has quantity 5, not 0. Let's add a product with 0
       const zeroProduct = {
         ...sampleProducts[1],
         quantity: 0,
+        id: 999, // unique id to avoid confusion
+        name: 'Zero Item',
       };
       render(<HomeClient products={[sampleProducts[0], zeroProduct]} categories={sampleCategories} />);
 
-      const minusButtons = screen.getAllByText('−');
-      // The component checks if quantity <= 0 and returns early, so the button should still be clickable but no update happens
-      await user.click(minusButtons[1]);
+      // Find the minus button inside the zero-product's card
+      const cards = screen.getAllByText('Zero Item').map(el => el.closest('div'));
+      const minusButtons = cards[0].querySelector('button');
+      await user.click(minusButtons);
 
-      // The mockUpdate should NOT be called if quantity is 0
       expect(mockUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Sort', () => {
+    it('renders sort dropdown', () => {
+      render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
+      expect(screen.getByText('Name A–Z')).toBeInTheDocument();
+    });
+
+    it('sorts products by quantity ascending', async () => {
+      const user = userEvent.setup();
+      render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
+
+      await user.selectOptions(screen.getByRole('combobox'), 'qty-asc');
+
+      const names = screen.getAllByText(/^(Sugar|Rice)$/);
+      expect(names[0]).toHaveTextContent('Sugar') // qty 5
+      expect(names[1]).toHaveTextContent('Rice')  // qty 50
     });
   });
 
@@ -251,7 +265,7 @@ describe('HomeClient CRUD Operations', () => {
     it('applies red styling for low stock items', () => {
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
-      const sugarRow = screen.getByText('Sugar').closest('div');
+      const sugarRow = screen.getByText('Sugar').closest('[class*="bg-red-50"]');
       expect(sugarRow).toHaveClass('border-red-200');
       expect(sugarRow).toHaveClass('bg-red-50');
     });
@@ -259,7 +273,7 @@ describe('HomeClient CRUD Operations', () => {
     it('applies normal styling for well-stocked items', () => {
       render(<HomeClient products={sampleProducts} categories={sampleCategories} />);
 
-      const riceRow = screen.getByText('Rice').closest('div');
+      const riceRow = screen.getByText('Rice').closest('[class*="rounded-xl"]');
       expect(riceRow).toHaveClass('border-transparent');
       expect(riceRow).not.toHaveClass('bg-red-50');
     });

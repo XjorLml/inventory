@@ -23,6 +23,7 @@ jest.mock('sonner', () => ({
 jest.mock('@/components/ui/FormDialog', () => ({
   FormDialog: ({ children, ...props }) => (
     <div data-testid="form-dialog" data-open={props.open}>
+      <h2>{props.title}</h2>
       <button onClick={props.onSubmit}>{props.submitLabel}</button>
       <button onClick={props.onOpenChange}>Close</button>
       {children}
@@ -41,15 +42,18 @@ jest.mock('@/components/ui/ConfirmDialog', () => ({
   ),
 }));
 
+import { toast } from 'sonner';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 describe('CategoriesClient CRUD Operations', () => {
   const mockSupabase = {
     from: jest.fn(),
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } } })),
+    },
   };
   const mockRouter = { refresh: jest.fn() };
-  const mockToast = { error: jest.fn() };
 
   const sampleCategories = [
     { id: 1, name: 'Grains' },
@@ -90,7 +94,7 @@ describe('CategoriesClient CRUD Operations', () => {
 
       await user.click(screen.getByText('+'));
       expect(screen.getByTestId('form-dialog')).toHaveAttribute('data-open', 'true');
-      expect(screen.getByText('Add Category')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add Category' })).toBeInTheDocument();
     });
 
     it('creates a new category successfully', async () => {
@@ -104,10 +108,10 @@ describe('CategoriesClient CRUD Operations', () => {
 
       await user.click(screen.getByText('+'));
       await user.type(screen.getByPlaceholderText('Category name'), 'Beverages');
-      await user.click(screen.getByText('Add Category'));
+      await user.click(screen.getByRole('button', { name: 'Add Category' }));
 
       await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith({ name: 'Beverages' });
+        expect(mockInsert).toHaveBeenCalledWith({ name: 'Beverages', user_id: 'user-1' });
       });
 
       expect(mockRouter.refresh).toHaveBeenCalled();
@@ -124,10 +128,10 @@ describe('CategoriesClient CRUD Operations', () => {
 
       await user.click(screen.getByText('+'));
       await user.type(screen.getByPlaceholderText('Category name'), 'Test');
-      await user.click(screen.getByText('Add Category'));
+      await user.click(screen.getByRole('button', { name: 'Add Category' }));
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Operation failed');
+        expect(toast.error).toHaveBeenCalledWith('Operation failed');
       });
     });
   });
@@ -137,7 +141,7 @@ describe('CategoriesClient CRUD Operations', () => {
       const user = userEvent.setup();
       render(<CategoriesClient categories={sampleCategories} />);
 
-      await user.click(screen.getByText('✏️ Edit'));
+      await user.click(screen.getAllByText('✏️ Edit')[0]);
       expect(screen.getByText('Edit Category')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Category name')).toHaveValue('Grains');
     });
@@ -153,7 +157,7 @@ describe('CategoriesClient CRUD Operations', () => {
 
       render(<CategoriesClient categories={sampleCategories} />);
 
-      await user.click(screen.getByText('✏️ Edit'));
+      await user.click(screen.getAllByText('✏️ Edit')[0]);
       await user.clear(screen.getByPlaceholderText('Category name'));
       await user.type(screen.getByPlaceholderText('Category name'), 'Updated Grains');
       await user.click(screen.getByText('Save Changes'));
@@ -175,7 +179,7 @@ describe('CategoriesClient CRUD Operations', () => {
       const user = userEvent.setup();
       render(<CategoriesClient categories={sampleCategories} />);
 
-      await user.click(screen.getByText('🗑️'));
+      await user.click(screen.getAllByText('🗑️')[0]);
       expect(screen.getByTestId('confirm-dialog')).toHaveAttribute('data-open', 'true');
       expect(screen.getByText('Delete Category')).toBeInTheDocument();
       expect(screen.getByText(/Are you sure you want to delete "Grains"/)).toBeInTheDocument();
@@ -192,7 +196,7 @@ describe('CategoriesClient CRUD Operations', () => {
 
       render(<CategoriesClient categories={sampleCategories} />);
 
-      await user.click(screen.getByText('🗑️'));
+      await user.click(screen.getAllByText('🗑️')[0]);
       await user.click(screen.getByText('Confirm'));
 
       await waitFor(() => {

@@ -33,13 +33,13 @@ describe("BottomNav", () => {
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
-  it("renders icons for each link", () => {
+  it("renders icon svgs for each link", () => {
     usePathname.mockReturnValue("/");
     render(<BottomNav />);
 
-    expect(screen.getByText("🏠")).toBeInTheDocument();
-    expect(screen.getByText("🛒")).toBeInTheDocument();
-    expect(screen.getByText("⚙️")).toBeInTheDocument();
+    const nav = document.querySelector("nav");
+    const svgs = nav.querySelectorAll("svg");
+    expect(svgs.length).toBe(3);
   });
 
   it("marks home link as active when on home page", () => {

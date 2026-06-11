@@ -44,6 +44,7 @@ export default function UserButton() {
             <img
               src={avatar}
               alt=""
+              referrerPolicy="no-referrer"
               className="w-7 h-7 rounded-full"
             />
           ) : (

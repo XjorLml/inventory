@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Settings } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Bug, Settings } from 'lucide-react'
 
 const links = [
   { href: '/',               label: 'Home',     Icon: LayoutDashboard },
   { href: '/shopping-list',  label: 'Shopping', Icon: ShoppingCart },
+  { href: '/qa',             label: 'QA',       Icon: Bug },
   { href: '/settings',       label: 'Settings', Icon: Settings },
 ]
 

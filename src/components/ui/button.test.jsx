@@ -71,6 +71,12 @@ describe('Button', () => {
     expect(link).toHaveAttribute('data-slot', 'button');
   });
 
+  it('renders with correct label (Submit)', () => {
+    render(<Button>Submit</Button>);
+    const button = screen.getByRole('button', { name: /submit/i });
+    expect(button).toHaveTextContent('Submit');
+  });
+
   it('renders icon correctly with size icon', () => {
     const { container } = render(<Button size="icon">★</Button>);
     const button = screen.getByRole('button');

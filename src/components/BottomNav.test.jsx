@@ -39,7 +39,7 @@ describe("BottomNav", () => {
 
     const nav = document.querySelector("nav");
     const svgs = nav.querySelectorAll("svg");
-    expect(svgs.length).toBe(3);
+    expect(svgs.length).toBe(4);
   });
 
   it("marks home link as active when on home page", () => {

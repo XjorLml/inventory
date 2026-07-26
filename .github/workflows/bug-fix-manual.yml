@@ -1,0 +1,73 @@
+name: Bug Fix - Manual Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "GitHub Issue number to fix"
+        required: true
+        type: number
+      description:
+        description: "Additional context for the fix"
+        required: false
+        type: string
+
+jobs:
+  fix-bug:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch issue details
+        id: issue
+        run: |
+          ISSUE_JSON=$(gh issue view ${{ inputs.issue_number }} --json title,body,labels)
+          echo "title=$(echo $ISSUE_JSON | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "body=$(echo $ISSUE_JSON | jq -r '.body')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create fix branch
+        run: |
+          BRANCH_NAME="bugfix/auto-fix-issue-${{ inputs.issue_number }}"
+          git checkout -b $BRANCH_NAME
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Apply fix via OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: anthropic/claude-sonnet-4-20250514
+          prompt: |
+            Fix issue #${{ inputs.issue_number }}: ${{ steps.issue.outputs.title }}
+
+            Issue description:
+            ${{ steps.issue.outputs.body }}
+
+            ${{ inputs.description && format('Additional context: {0}', inputs.description) }}
+
+            1. Read the issue carefully
+            2. Reproduce the bug by running the relevant tests
+            3. Implement the fix
+            4. Verify the fix passes all tests: npx jest --no-coverage
+            5. Commit with "Fixes #${{ inputs.issue_number }}"
+            6. Push the branch and create a PR

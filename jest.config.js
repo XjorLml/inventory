@@ -32,7 +32,7 @@ module.exports = {
       outputFile: "test-failures.json",
       environment: process.env.NODE_ENV || "development",
       commitSha: process.env.COMMIT_SHA || "unknown",
-      autoFile: false,  // set true to auto-file tickets via the QA agent
+      autoFile: process.env.QA_AUTO_FILE === "true",
     }]
   ],
 };

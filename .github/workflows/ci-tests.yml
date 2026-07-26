@@ -1,0 +1,75 @@
+name: CI - Tests & Auto Bug Filing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 6 AM UTC to catch regressions
+    - cron: "0 6 * * *"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with QA reporter
+        id: test
+        continue-on-error: true
+        run: npx jest --no-coverage 2>&1 | tee jest-output.txt
+        env:
+          # Enable auto-filing only on schedule or push to main
+          QA_AUTO_FILE: ${{ (github.event_name == 'schedule' || github.ref == 'refs/heads/main') && 'true' || 'false' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Check for test failures
+        id: check
+        run: |
+          if grep -q "FAIL" jest-output.txt; then
+            echo "has_failures=true" >> $GITHUB_OUTPUT
+            echo "failure_count=$(grep -c 'FAIL' jest-output.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "has_failures=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: File bug tickets for test failures
+        if: steps.check.outputs.has_failures == 'true' && env.QA_AUTO_FILE == 'true'
+        run: |
+          echo "Test failures detected — filing GitHub issues..."
+          # Uses the QA agent to process any test-failures.json
+          if [ -f test-failures.json ]; then
+            node src/qa-agent/index.mjs --input test-failures.json
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-failures.json
+            jest-output.txt
+          retention-days: 7

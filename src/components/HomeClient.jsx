@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { ArrowUpDown } from "lucide-react";
 import {
   Dialog,
@@ -89,10 +90,19 @@ export default function HomeClient({ products, categories }) {
 
   // Save adjusted quantity
   const handleSaveQty = async () => {
-    await supabase
+    const qtyNum = Number(newQty);
+    if (isNaN(qtyNum) || qtyNum < 0) {
+      toast.error("Please enter a valid quantity");
+      return;
+    }
+    const { error } = await supabase
       .from("products")
-      .update({ quantity: Number(newQty) })
+      .update({ quantity: qtyNum })
       .eq("id", adjusting.id);
+    if (error) {
+      toast.error("Failed to save quantity. Please try again.");
+      return;
+    }
     setAdjusting(null);
     router.refresh();
   };
@@ -199,12 +209,17 @@ export default function HomeClient({ products, categories }) {
                 <button
                   onClick={async () => {
                     if (product.quantity <= 0) return;
-                    await supabase
+                    const { error } = await supabase
                       .from("products")
                       .update({ quantity: product.quantity - 1 })
                       .eq("id", product.id);
+                    if (error) {
+                      toast.error("Failed to update quantity.");
+                      return;
+                    }
                     router.refresh();
                   }}
+                  aria-label="Decrease quantity"
                   className="w-8 h-8 rounded-full border flex items-center justify-center text-zinc-600 font-bold hover:bg-zinc-100"
                 >
                   −
@@ -212,6 +227,7 @@ export default function HomeClient({ products, categories }) {
 
                 <button
                   onClick={() => openAdjust(product)}
+                  aria-label="Increase quantity"
                   className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold hover:bg-green-700"
                 >
                   +
@@ -236,6 +252,7 @@ export default function HomeClient({ products, categories }) {
               <div className="flex items-center gap-6">
                 <button
                   onClick={() => setNewQty((q) => Math.max(0, Number(q) - 1))}
+                  aria-label="Decrease quantity"
                   className="w-10 h-10 rounded-full border-2 flex items-center
                              justify-center text-xl font-bold hover:bg-zinc-100"
                 >
@@ -251,6 +268,7 @@ export default function HomeClient({ products, categories }) {
 
                 <button
                   onClick={() => setNewQty((q) => Number(q) + 1)}
+                  aria-label="Increase quantity"
                   className="w-10 h-10 rounded-full border-2 flex items-center
                              justify-center text-xl font-bold hover:bg-zinc-100"
                 >

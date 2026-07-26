@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 export default function ShoppingListClient({ products }) {
   const router = useRouter()
@@ -14,11 +15,20 @@ export default function ShoppingListClient({ products }) {
   const [qty, setQty] = useState('')
 
   const handleRestock = async (product) => {
-    const newQty = product.quantity + Number(qty)
-    await supabase
+    const qtyNum = Number(qty)
+    if (isNaN(qtyNum) || qtyNum < 0) {
+      toast.error('Please enter a valid quantity')
+      return
+    }
+    const newQty = product.quantity + qtyNum
+    const { error } = await supabase
       .from('products')
       .update({ quantity: newQty })
       .eq('id', product.id)
+    if (error) {
+      toast.error('Failed to restock. Please try again.')
+      return
+    }
     setRestocking(null)
     setQty('')
     router.refresh()

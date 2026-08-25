@@ -30,6 +30,7 @@ describe("BottomNav", () => {
 
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByText("Shopping")).toBeInTheDocument();
+    expect(screen.getByText("AI")).toBeInTheDocument();
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
@@ -40,6 +41,14 @@ describe("BottomNav", () => {
     const nav = document.querySelector("nav");
     const svgs = nav.querySelectorAll("svg");
     expect(svgs.length).toBe(4);
+  });
+
+  it("marks assistant link as active when on assistant page", () => {
+    usePathname.mockReturnValue("/assistant");
+    render(<BottomNav />);
+
+    const assistantLink = screen.getByText("AI").closest("a");
+    expect(assistantLink).toHaveClass("text-green-600");
   });
 
   it("marks home link as active when on home page", () => {
@@ -101,10 +110,12 @@ describe("BottomNav", () => {
 
     const homeLink = screen.getByText("Home").closest("a");
     const shoppingLink = screen.getByText("Shopping").closest("a");
+    const assistantLink = screen.getByText("AI").closest("a");
     const settingsLink = screen.getByText("Settings").closest("a");
 
     expect(homeLink).toHaveAttribute("href", "/");
     expect(shoppingLink).toHaveAttribute("href", "/shopping-list");
+    expect(assistantLink).toHaveAttribute("href", "/assistant");
     expect(settingsLink).toHaveAttribute("href", "/settings");
   });
 

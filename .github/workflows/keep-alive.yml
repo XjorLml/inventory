@@ -14,7 +14,7 @@ jobs:
         env:
           VERCEL_URL: ${{ secrets.VERCEL_URL }}
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L \
             "https://${VERCEL_URL}/api/health")
 
           echo "Response status: $STATUS"

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Clipboard body gradient: light at top, slightly darker at bottom -->
+    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <!-- Clip tab gradient -->
+    <linearGradient id="clipGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <!-- Soft shadow filter -->
+    <filter id="shadow" x="-12%" y="-8%" width="130%" height="135%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="blur"/>
+      <feOffset in="blur" dx="4" dy="8" result="offsetBlur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.35" result="color"/>
+      <feComposite in="color" in2="offsetBlur" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background - dark navy rounded square -->
+  <rect width="512" height="512" rx="108" fill="#0f172a"/>
+
+  <!-- Everything on the clipboard with soft drop shadow -->
+  <g filter="url(#shadow)">
+
+    <!-- Right edge (3D thickness) -->
+    <rect x="400" y="144" width="14" height="316" rx="4" fill="#94a3b8"/>
+
+    <!-- Bottom edge (3D thickness) -->
+    <rect x="140" y="452" width="270" height="14" rx="4" fill="#94a3b8"/>
+
+    <!-- Bottom-right corner join -->
+    <circle cx="407" cy="459" r="7" fill="#8896a7"/>
+
+    <!-- Clipboard body - white with top-to-bottom gradient -->
+    <rect x="108" y="112" width="296" height="344" rx="28" fill="url(#bodyGrad)"/>
+
+    <!-- Top inner highlight on body -->
+    <rect x="140" y="118" width="232" height="3" rx="1.5" fill="#ffffff" opacity="0.8"/>
+
+    <!-- Clip tab back face (depth) -->
+    <rect x="198" y="66" width="116" height="54" rx="16" fill="#1e293b"/>
+
+    <!-- Clip tab front face with gradient -->
+    <rect x="204" y="72" width="104" height="44" rx="12" fill="url(#clipGrad)"/>
+
+    <!-- Clip tab highlight -->
+    <rect x="218" y="78" width="76" height="10" rx="5" fill="#64748b" opacity="0.5"/>
+
+    <!-- Clip inner shadow (bottom edge) -->
+    <rect x="204" y="106" width="104" height="4" rx="2" fill="#1e293b" opacity="0.5"/>
+
+    <!-- Row 1: Checkmark + Line -->
+    <path d="M160 214 L180 234 L224 184" fill="none" stroke="#22c55e" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="254" y="200" width="120" height="22" rx="11" fill="#475569"/>
+
+    <!-- Row 2: Checkmark + Line -->
+    <path d="M160 290 L180 310 L224 260" fill="none" stroke="#22c55e" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="254" y="276" width="120" height="22" rx="11" fill="#475569"/>
+
+    <!-- Row 3: Checkmark + Line -->
+    <path d="M160 366 L180 386 L224 336" fill="none" stroke="#22c55e" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="254" y="352" width="120" height="22" rx="11" fill="#475569"/>
+
+  </g>
+</svg>
